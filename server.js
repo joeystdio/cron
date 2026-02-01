@@ -1,15 +1,54 @@
 const express = require('express');
 const cronParser = require('cron-parser');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(cookieParser());
+
+// Auth middleware - validates session against auth.jdms.nl
+async function requireAuth(req, res, next) {
+  const sessionToken = req.cookies['__Secure-next-auth.session-token'] || 
+                       req.cookies['next-auth.session-token'];
+  
+  if (!sessionToken) {
+    const callbackUrl = encodeURIComponent(`https://cron.jdms.nl${req.originalUrl}`);
+    return res.redirect(`https://auth.jdms.nl/login?callbackUrl=${callbackUrl}`);
+  }
+
+  try {
+    const response = await fetch('https://auth.jdms.nl/api/validate', {
+      headers: {
+        Cookie: `__Secure-next-auth.session-token=${sessionToken}`
+      }
+    });
+    const data = await response.json();
+
+    if (data.valid) {
+      req.user = data.user;
+      return next();
+    }
+  } catch (error) {
+    console.error('Auth validation error:', error.message);
+  }
+
+  const callbackUrl = encodeURIComponent(`https://cron.jdms.nl${req.originalUrl}`);
+  res.redirect(`https://auth.jdms.nl/login?callbackUrl=${callbackUrl}`);
+}
+
+// Protect the main page
+app.get('/', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Static assets (CSS, JS loaded by the page)
 app.use(express.static('public'));
 
 // Parse cron expression and return details
-app.post('/api/parse', (req, res) => {
+app.post('/api/parse', requireAuth, (req, res) => {
   try {
     const { expression } = req.body;
     if (!expression) {
@@ -80,7 +119,7 @@ function describeCron(expr) {
     desc.push(`hours ${hour}`);
   } else {
     desc.push(`at ${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`);
-    desc.shift(); // Remove minute description if we have specific hour
+    desc.shift();
   }
   
   // Day of month
