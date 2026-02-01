@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cron Builder - Visual Cron Expression Generator</title>
+  <meta name="description" content="Build cron expressions visually. See human-readable descriptions and next run times instantly.">
+  <meta property="og:title" content="Cron Builder">
+  <meta property="og:description" content="Visual cron expression generator with live preview">
+  <meta property="og:url" content="https://cron.jdms.nl">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #e4e4e7;
+      padding: 2rem;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(90deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .subtitle {
+      color: #a1a1aa;
+      font-size: 1.1rem;
+    }
+    
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(10px);
+    }
+    
+    .expression-display {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .expression-box {
+      flex: 1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      padding: 1rem 1.25rem;
+      background: rgba(0, 0, 0, 0.3);
+      border: 2px solid rgba(96, 165, 250, 0.3);
+      border-radius: 12px;
+      color: #60a5fa;
+      text-align: center;
+      letter-spacing: 0.1em;
+    }
+    
+    .copy-btn {
+      padding: 1rem 1.5rem;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, opacity 0.2s;
+    }
+    
+    .copy-btn:hover {
+      transform: scale(1.05);
+    }
+    
+    .copy-btn:active {
+      transform: scale(0.95);
+    }
+    
+    .copy-btn.copied {
+      background: #22c55e;
+    }
+    
+    .fields-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .field {
+      text-align: center;
+    }
+    
+    .field label {
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #a1a1aa;
+      margin-bottom: 0.5rem;
+    }
+    
+    .field select, .field input {
+      width: 100%;
+      padding: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: #e4e4e7;
+      text-align: center;
+      cursor: pointer;
+    }
+    
+    .field select:focus, .field input:focus {
+      outline: none;
+      border-color: #60a5fa;
+    }
+    
+    .field input {
+      cursor: text;
+    }
+    
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .preset-btn {
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: #e4e4e7;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .preset-btn:hover {
+      background: rgba(96, 165, 250, 0.2);
+      border-color: #60a5fa;
+    }
+    
+    .description {
+      padding: 1rem;
+      background: rgba(96, 165, 250, 0.1);
+      border-left: 3px solid #60a5fa;
+      border-radius: 0 8px 8px 0;
+      color: #93c5fd;
+      font-size: 1rem;
+    }
+    
+    .description.error {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: #ef4444;
+      color: #fca5a5;
+    }
+    
+    h3 {
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #a1a1aa;
+      margin-bottom: 1rem;
+    }
+    
+    .next-runs {
+      display: grid;
+      gap: 0.5rem;
+    }
+    
+    .next-run {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+    }
+    
+    .next-run .date {
+      color: #60a5fa;
+    }
+    
+    .next-run .relative {
+      color: #a1a1aa;
+    }
+    
+    footer {
+      text-align: center;
+      margin-top: 2rem;
+      color: #71717a;
+      font-size: 0.875rem;
+    }
+    
+    footer a {
+      color: #60a5fa;
+      text-decoration: none;
+    }
+    
+    @media (max-width: 640px) {
+      .fields-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      
+      .fields-grid .field:nth-child(4),
+      .fields-grid .field:nth-child(5) {
+        grid-column: span 1;
+      }
+      
+      h1 { font-size: 1.75rem; }
+      .expression-box { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>⏰ Cron Builder</h1>
+      <p class="subtitle">Build cron expressions visually</p>
+    </header>
+    
+    <div class="card">
+      <div class="expression-display">
+        <div class="expression-box" id="expression">* * * * *</div>
+        <button class="copy-btn" id="copyBtn">Copy</button>
+      </div>
+      
+      <div class="fields-grid">
+        <div class="field">
+          <label>Minute</label>
+          <input type="text" id="minute" value="*" placeholder="0-59">
+        </div>
+        <div class="field">
+          <label>Hour</label>
+          <input type="text" id="hour" value="*" placeholder="0-23">
+        </div>
+        <div class="field">
+          <label>Day (Month)</label>
+          <input type="text" id="dayOfMonth" value="*" placeholder="1-31">
+        </div>
+        <div class="field">
+          <label>Month</label>
+          <input type="text" id="month" value="*" placeholder="1-12">
+        </div>
+        <div class="field">
+          <label>Day (Week)</label>
+          <input type="text" id="dayOfWeek" value="*" placeholder="0-6">
+        </div>
+      </div>
+      
+      <div class="presets">
+        <button class="preset-btn" data-cron="* * * * *">Every minute</button>
+        <button class="preset-btn" data-cron="*/5 * * * *">Every 5 min</button>
+        <button class="preset-btn" data-cron="*/15 * * * *">Every 15 min</button>
+        <button class="preset-btn" data-cron="0 * * * *">Every hour</button>
+        <button class="preset-btn" data-cron="0 */6 * * *">Every 6 hours</button>
+        <button class="preset-btn" data-cron="0 0 * * *">Daily midnight</button>
+        <button class="preset-btn" data-cron="0 9 * * *">Daily 9 AM</button>
+        <button class="preset-btn" data-cron="0 9 * * 1-5">Weekdays 9 AM</button>
+        <button class="preset-btn" data-cron="0 0 * * 0">Weekly Sunday</button>
+        <button class="preset-btn" data-cron="0 0 1 * *">Monthly</button>
+      </div>
+      
+      <div class="description" id="description">Every minute</div>
+    </div>
+    
+    <div class="card">
+      <h3>Next 5 Runs</h3>
+      <div class="next-runs" id="nextRuns">
+        <div class="next-run">
+          <span class="date">Loading...</span>
+        </div>
+      </div>
+    </div>
+    
+    <footer>
+      Built with ☕ by <a href="https://jdms.nl">jdms.nl</a>
+    </footer>
+  </div>
+  
+  <script>
+    const fields = ['minute', 'hour', 'dayOfMonth', 'month', 'dayOfWeek'];
+    const expressionEl = document.getElementById('expression');
+    const descriptionEl = document.getElementById('description');
+    const nextRunsEl = document.getElementById('nextRuns');
+    const copyBtn = document.getElementById('copyBtn');
+    
+    function updateExpression() {
+      const parts = fields.map(f => document.getElementById(f).value || '*');
+      const expr = parts.join(' ');
+      expressionEl.textContent = expr;
+      parseExpression(expr);
+    }
+    
+    async function parseExpression(expr) {
+      try {
+        const res = await fetch('/api/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ expression: expr })
+        });
+        const data = await res.json();
+        
+        if (data.valid) {
+          descriptionEl.textContent = data.description;
+          descriptionEl.classList.remove('error');
+          renderNextRuns(data.nextRuns);
+        } else {
+          descriptionEl.textContent = '⚠️ ' + data.error;
+          descriptionEl.classList.add('error');
+          nextRunsEl.innerHTML = '<div class="next-run"><span class="date">Invalid expression</span></div>';
+        }
+      } catch (err) {
+        descriptionEl.textContent = '⚠️ Error parsing expression';
+        descriptionEl.classList.add('error');
+      }
+    }
+    
+    function renderNextRuns(runs) {
+      nextRunsEl.innerHTML = runs.map(run => {
+        const date = new Date(run);
+        const formatted = date.toLocaleString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+        const relative = getRelativeTime(date);
+        return `<div class="next-run">
+          <span class="date">${formatted}</span>
+          <span class="relative">${relative}</span>
+        </div>`;
+      }).join('');
+    }
+    
+    function getRelativeTime(date) {
+      const now = new Date();
+      const diff = date - now;
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+      
+      if (minutes < 1) return 'now';
+      if (minutes < 60) return `in ${minutes}m`;
+      if (hours < 24) return `in ${hours}h ${minutes % 60}m`;
+      return `in ${days}d ${hours % 24}h`;
+    }
+    
+    // Event listeners
+    fields.forEach(f => {
+      document.getElementById(f).addEventListener('input', updateExpression);
+    });
+    
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const parts = btn.dataset.cron.split(' ');
+        fields.forEach((f, i) => {
+          document.getElementById(f).value = parts[i];
+        });
+        updateExpression();
+      });
+    });
+    
+    copyBtn.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(expressionEl.textContent);
+      copyBtn.textContent = 'Copied!';
+      copyBtn.classList.add('copied');
+      setTimeout(() => {
+        copyBtn.textContent = 'Copy';
+        copyBtn.classList.remove('copied');
+      }, 2000);
+    });
+    
+    // Initial parse
+    updateExpression();
+  </script>
+</body>
+</html>

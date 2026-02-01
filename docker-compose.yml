@@ -1,0 +1,18 @@
+services:
+  cron:
+    build: .
+    container_name: cron-app
+    restart: unless-stopped
+    networks:
+      - n8n-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cron.rule=Host(`cron.jdms.nl`)"
+      - "traefik.http.routers.cron.entrypoints=websecure"
+      - "traefik.http.routers.cron.tls.certresolver=letsencrypt"
+      - "traefik.http.services.cron.loadbalancer.server.port=3000"
+
+networks:
+  n8n-network:
+    external: true
+    name: n8n-setup_n8n-network
